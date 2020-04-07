@@ -114,12 +114,15 @@ class ResNet50(nn.Module):
         
         self.resnet50 = torchvision.models.resnet50(pretrained=isTrained)
         
-        self.resnet50 = nn.Sequential(self.resnet50, nn.ReLU(), nn.Linear(1000, classCount), nn.Sigmoid())
+        self.resnet50.fc = nn.Sequential(
+               nn.Linear(2048, 128),
+               nn.ReLU(inplace=True),
+               nn.Linear(128, 2))
         
         if freeze:
             for parameter in self.resnet50.parameters():
                 parameter.requires_grad = False
-            for parameter in self.resnet50[2:].parameters():
+            for parameter in self.resnet50.fc.parameters():
                 parameter.requires_grad = True
 
         model_parameters = filter(lambda p: p.requires_grad, self.resnet50.parameters())

@@ -310,8 +310,11 @@ class ChexnetTrainer_Binary ():
         scheduler = ReduceLROnPlateau(optimizer, factor = 0.1, patience = 5, mode = 'min')
                 
         #-------------------- SETTINGS: LOSS
-        loss = torch.nn.BCELoss(size_average = True)
-        
+        if nnArchitecture == 'DENSE-NET-121-Binary':
+            loss = torch.nn.BCELoss(size_average = True)
+        elif nnArchitecture == 'RES-NET-50':
+            loss = nn.CrossEntropyLoss()
+            
         #---- Load checkpoint 
         if checkpoint != None:
             modelCheckpoint = torch.load(checkpoint)

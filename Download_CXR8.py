@@ -11,3 +11,39 @@ tar -xf images_005.tar.gz
 mv images images_005
 mv images* database/
 '''
+
+import gdown
+
+id_list = [
+    '16gFsmXEOkgtZgdWFrKDeooDM2uvzeoCQ',
+    '16H8G-p4iEWfTdLSALW85dEUlv18vCcj-',
+    '16U2P24ljPKrd_0pW5CqnUYv3jk8Yw_n6',
+    '16IgpfncrhNT62wubADusK6Jz38tGJ-IP',
+    '16fj9S9e22ANqzPmDo7sg2tKyx6XJ9T8Q',
+    '1aQgBC-1AL_DjeMJ028ZrAfE9ydfNg4dp',
+    '1-0_8sF3wcXhEEVSJbtJQ5Mlb40Gox-u4',
+    '1-33JtezSsRBwQ1mScrCXq968R6KGnNv_',
+    '1-CaHlUEFTGim0X4_rpckX6rsxs3UfbLB',
+    '1-EsHxl8AYNO15qyH2U-TietH3AmOQ1lT',
+    '1-LEMQioDzdCfkC6wLpyvVhngXOB6O4_Z',
+    '1-QK_YUM6RdCzhcWHUwfOao3VYA6s4YOU'
+]
+
+out_list = [
+    'images_001.tar.gz',
+    'images_002.tar.gz',
+    'images_003.tar.gz',
+    'images_004.tar.gz',
+    'images_005.tar.gz',
+    'images_006.tar.gz',
+    'images_007.tar.gz',
+    'images_008.tar.gz',
+    'images_009.tar.gz',
+    'images_010.tar.gz',
+    'images_011.tar.gz',
+    'images_012.tar.gz',
+]
+url = 'https://drive.google.com/uc?id='
+
+for inid, outid in zip(id_list, out_list):
+    gdown.download(url+inid, outid, quiet=False)
