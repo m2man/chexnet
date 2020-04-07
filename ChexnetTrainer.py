@@ -355,11 +355,10 @@ class ChexnetTrainer_Binary ():
     def epochTrain (model, dataLoader, optimizer, scheduler, epochMax, classCount, loss):
         
         model.train()
-        
-        for batchID, (input, target) in enumerate (dataLoader):
+        loss_report = 0
+        count = 0
 
-            if batchID % 100 == 0:
-                print(f"Batch Idx: {batchID} / {len(dataLoader)}")  
+        for batchID, (input, target) in enumerate (dataLoader): 
 
             target = target.cuda(async = True)
                  
@@ -373,6 +372,12 @@ class ChexnetTrainer_Binary ():
             optimizer.zero_grad()
             lossvalue.backward()
             optimizer.step()
+
+            loss_report += lossvalue.item()
+            count += 1
+
+            if (batchID+1) % 100 == 0:
+                print(f"Batch Idx: {batchID+1} / {len(dataLoader)}: Loss Train {loss_report/count}") 
             
     #-------------------------------------------------------------------------------- 
         
