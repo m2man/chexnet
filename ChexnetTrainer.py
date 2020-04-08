@@ -585,7 +585,7 @@ class ChexnetTrainer_Binary_ResNet ():
             timestampDate = time.strftime("%d%m%Y")
             timestampEND = timestampDate + '-' + timestampTime
 
-            f_log.write(f"[{timestampEND} - {epochID+1}]\nLoss_Train: {lossTrain}\nLoss_Val: {Loss_Val}\n")
+            f_log.write(f"[{timestampEND} - {epochID+1}]\nLoss_Train: {lossTrain}\nLoss_Val: {lossVal}\n")
             
             scheduler.step(losstensor.item())
             
