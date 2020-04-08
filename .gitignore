@@ -1,4 +1,5 @@
 *.vscode
-*pycache
+*pycache*
 *pyc
 *.tar.gz
+*.log

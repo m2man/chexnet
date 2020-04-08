@@ -3,7 +3,7 @@ import numpy as np
 import time
 import sys
 
-from ChexnetTrainer import ChexnetTrainer, ChexnetTrainer_Binary
+from ChexnetTrainer import ChexnetTrainer, ChexnetTrainer_Binary, ChexnetTrainer_Binary_ResNet
 
 #-------------------------------------------------------------------------------- 
 
@@ -65,40 +65,45 @@ def runTrain_Binary():
     timestampLaunch = timestampDate + '-' + timestampTime
     
     #---- Path to the directory with images
-    pathDirData = './database'
+    pathDirData = '/home/dxtien/dxtien_research/COVID/CXR8'
     
     #---- Paths to the files with training, validation and testing sets.
     #---- Each file should contains pairs [path to image, output vector]
     #---- Example: images_011/00027736_001.png 0 0 0 0 0 0 0 0 0 0 0 0 0 0
     pathFileTrain = './dataset/binary_train.txt'
-    pathFileVal = './dataset/binary_validate_try.txt'
+    pathFileVal = './dataset/binary_validate.txt'
     pathFileTest = './dataset/binary_test.txt'
     
     #---- Neural network parameters: type of the network, is it pre-trained 
     #---- on imagenet, number of classes
-    nnArchitecture = 'RES-NET-50'
+    nnArchitecture = 'RESNET-50'
     nnIsTrained = True
     nnClassCount = 2
     
     #---- Training settings: batch size, maximum number of epochs
-    trBatchSize = 32
-    trMaxEpoch = 10
+    trBatchSize = 256
+    trMaxEpoch = 100
     
     #---- Parameters related to image transforms: size of the down-scaled image, cropped image
     imgtransResize = 256
     imgtransCrop = 224
         
-    pathModel = 'm-' + timestampLaunch + '.pth.tar'
+    pathModel = nnArchitecture + '-' + timestampLaunch + '.pth.tar'
     
     #pathModel = 'm-06042020-134822.pth.tar'
     #pathModel = 'm-06042020-172102.pth.tar'
 
     print ('Training ...')
-    ChexnetTrainer_Binary.train(pathDirData, pathFileTrain, nnArchitecture, pathFileVal, nnIsTrained, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint=None)
+    if nnArchitecture == 'RESNET-50':
+        ChexnetTrainer_Binary_ResNet.train(pathDirData, pathFileTrain, pathFileVal, nnIsTrained, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint=None)
+    else:
+        ChexnetTrainer_Binary.train(pathDirData, pathFileTrain, nnArchitecture, pathFileVal, nnIsTrained, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint=None)
     
     print ('Testing the trained model')
-    ChexnetTrainer_Binary.test(pathDirData, pathFileTest, nnArchitecture, pathModel, nnClassCount, nnIsTrained, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)
-
+    if nnArchitecture == 'RESNET-50':
+        ChexnetTrainer_Binary_ResNet.test(pathDirData, pathFileTest, pathModel, nnClassCount, nnIsTrained, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)
+    else:
+        ChexnetTrainer_Binary.test(pathDirData, pathFileTest, nnArchitecture, pathModel, nnClassCount, nnIsTrained, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)
 
 #-------------------------------------------------------------------------------- 
 

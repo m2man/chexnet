@@ -3,7 +3,12 @@ import numpy as np
 import random
 random.seed(1509)
 
-Folder_Path_List = ['images_001/', 'images_002/', 'images_003/', 'images_004/', 'images_005/']
+Folder_Path_List = [
+    'images_001/', 'images_002/', 'images_003/', 'images_004/', 'images_005/',
+    'images_006/', 'images_007/', 'images_008/', 'images_009/', 'images_010/',
+    'images_011/', 'images_012/'
+]
+
 in_file = 'dataset/all.txt'
 out_file = 'dataset/binary_all.txt'
 download_file = 'dataset/binary_download.txt'
