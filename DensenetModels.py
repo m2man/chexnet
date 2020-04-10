@@ -62,7 +62,7 @@ class DenseNet201(nn.Module):
 ##### TRANSFER TO BINARY #####
 
 class DenseNet121_Binary(nn.Module):
-  def __init__(self, classCount=2, isTrained=True, transfer=True):
+  def __init__(self, classCount=2, isTrained=True, transfer=True, freeze=True):
 	
     super(DenseNet121_Binary, self).__init__()
 
@@ -93,10 +93,11 @@ class DenseNet121_Binary(nn.Module):
 
     self.densenet121.densenet121.classifier = nn.Sequential(nn.Linear(kernelCount, classCount), nn.Sigmoid())
 
-    for parameter in self.densenet121.parameters():
-        parameter.requires_grad = False
-    for parameter in self.densenet121.densenet121.classifier.parameters():
-        parameter.requires_grad = True
+    if freeze:
+        for parameter in self.densenet121.parameters():
+            parameter.requires_grad = False
+        for parameter in self.densenet121.densenet121.classifier.parameters():
+            parameter.requires_grad = True
 
     model_parameters = filter(lambda p: p.requires_grad, self.densenet121.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
@@ -105,6 +106,54 @@ class DenseNet121_Binary(nn.Module):
   def forward(self, x):
     x = self.densenet121(x)
     return x
+
+
+class DenseNet121_Binary_FN(nn.Module):
+  def __init__(self, classCount=1, isTrained=True, transfer=True, freeze=True):
+	
+    super(DenseNet121_Binary, self).__init__()
+
+    self.densenet121 = DenseNet121(classCount=14, isTrained=True)
+
+    if transfer:
+        modelCheckpoint = torch.load('./models/m-25012018-123527.pth.tar')
+        new_state_dict = OrderedDict()
+
+        ##### Convert Parrallel to Single GPU Loading Model #####
+        for k, v in modelCheckpoint['state_dict'].items():
+            if 'module.' in k:
+                name = k[7:] # remove `module.`
+                name = name.replace('norm.', 'norm')
+                name = name.replace('conv.', 'conv')
+                name = name.replace('normweight', 'norm.weight')
+                name = name.replace('convweight', 'conv.weight')
+                name = name.replace('normbias', 'norm.bias')
+                name = name.replace('normrunning_mean', 'norm.running_mean')
+                name = name.replace('normrunning_var', 'norm.running_var')
+                new_state_dict[name] = v
+            else:
+                new_state_dict[k] = v
+
+        self.densenet121.load_state_dict(new_state_dict)
+
+    kernelCount = self.densenet121.densenet121.classifier[0].in_features
+
+    self.densenet121.densenet121.classifier = nn.Linear(kernelCount, classCount)
+
+    if freeze:
+        for parameter in self.densenet121.parameters():
+            parameter.requires_grad = False
+        for parameter in self.densenet121.densenet121.classifier.parameters():
+            parameter.requires_grad = True
+
+    model_parameters = filter(lambda p: p.requires_grad, self.densenet121.parameters())
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    print(f'Total Trainable Params {params}')
+
+  def forward(self, x):
+    x = self.densenet121(x)
+    return x
+
 
 
 class ResNet50(nn.Module):

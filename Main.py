@@ -25,7 +25,7 @@ def runTrain():
     timestampLaunch = timestampDate + '-' + timestampTime
     
     #---- Path to the directory with images
-    pathDirData = './database'
+    pathDirData = '/home/dxtien/dxtien_research/COVID/CXR8'
     
     #---- Paths to the files with training, validation and testing sets.
     #---- Each file should contains pairs [path to image, output vector]
@@ -76,13 +76,14 @@ def runTrain_Binary():
     
     #---- Neural network parameters: type of the network, is it pre-trained 
     #---- on imagenet, number of classes
-    nnArchitecture = 'RESNET-50'
+    #nnArchitecture = 'RESNET-50'
+    nnArchitecture = 'DENSENET-121'
     nnIsTrained = True
     nnClassCount = 2
-    
+
     #---- Training settings: batch size, maximum number of epochs
-    trBatchSize = 256
-    trMaxEpoch = 100
+    trBatchSize = 64
+    trMaxEpoch = 50
     
     #---- Parameters related to image transforms: size of the down-scaled image, cropped image
     imgtransResize = 256
@@ -95,7 +96,7 @@ def runTrain_Binary():
 
     print ('Training ...')
     if nnArchitecture == 'RESNET-50':
-        ChexnetTrainer_Binary_ResNet.train(pathDirData, pathFileTrain, pathFileVal, nnIsTrained, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint=None)
+        ChexnetTrainer_Binary_ResNet.train(pathDirData, pathFileTrain, pathFileVal, nnIsTrained, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint='RESNET-50-10042020-030319.pth.tar')
     else:
         ChexnetTrainer_Binary.train(pathDirData, pathFileTrain, nnArchitecture, pathFileVal, nnIsTrained, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint=None)
     
@@ -109,12 +110,12 @@ def runTrain_Binary():
 
 def runTest():
     
-    pathDirData = './database'
+    pathDirData = '/home/dxtien/dxtien_research/COVID/CXR8'
     pathFileTest = './dataset/test_1.txt'
     nnArchitecture = 'DENSE-NET-121'
     nnIsTrained = True
     nnClassCount = 14
-    trBatchSize = 16
+    trBatchSize = 2
     imgtransResize = 256
     imgtransCrop = 224
     
