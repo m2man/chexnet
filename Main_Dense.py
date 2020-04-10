@@ -28,7 +28,6 @@ def runTrain():
     
     #---- Neural network parameters: type of the network, is it pre-trained 
     #---- on imagenet, number of classes
-    #nnArchitecture = 'RESNET-50'
     nnArchitecture = 'DENSENET-121-FN'
     nnIsTrained = True
 
@@ -46,7 +45,7 @@ def runTrain():
     #pathModel = 'm-06042020-172102.pth.tar'
 
     print ('Training ...')
-    ChexnetTrainer_Binary_FN.train(pathDirData, pathFileTrain, nnArchitecture, pathFileVal, nnIsTrained, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint=None)
+    ChexnetTrainer_Binary_FN.train(pathDirData, pathFileTrain, pathFileVal, nnIsTrained, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint=None)
     
     print ('Testing the trained model')
     ChexnetTrainer_Binary_FN.test(pathDirData, pathFileTest, nnArchitecture, pathModel, nnIsTrained, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)

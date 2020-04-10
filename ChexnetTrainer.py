@@ -371,7 +371,10 @@ class ChexnetTrainer_Binary ():
             else:
                 print ('Epoch [' + str(epochID + 1) + '] [----] [' + timestampEND + '] loss= ' + str(lossVal))
                 f_log.write(f"[{timestampEND} - {epochID+1}]\nLoss_Train: {lossTrain}\nLoss_Val: {lossVal}\n")
-        
+
+            if (epochID + 1) % 10 == 0:
+                print("Evaluate full here")
+
         f_log.close()
         
     #-------------------------------------------------------------------------------- 
@@ -484,7 +487,7 @@ class ChexnetTrainer_Binary ():
             model = ResNet50(nnClassCount, nnIsTrained).cuda()
         elif nnArchitecture == 'DENSENET-121':
             nnClassCount = 2 
-            model = DenseNet121_Binary(nnClassCount, nnIsTrained)
+            model = DenseNet121_Binary(nnClassCount, nnIsTrained).cuda()
         
         modelCheckpoint = torch.load(pathModel)
         model.load_state_dict(modelCheckpoint['state_dict'])
@@ -585,7 +588,7 @@ class ChexnetTrainer_Binary_FN ():
         scheduler = ReduceLROnPlateau(optimizer, factor = 0.1, patience = 2, mode = 'min', verbose=True)
                 
         #-------------------- SETTINGS: LOSS
-        pos_weight = torch.FloatTensor([2.5])
+        pos_weight = torch.FloatTensor([2.5]).cuda()
         loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             
         #---- Load checkpoint 
@@ -726,7 +729,7 @@ class ChexnetTrainer_Binary_FN ():
     #---- launchTimestamp - date/time, used to assign unique name for the checkpoint file
     #---- checkpoint - if not None loads the model and continues training
     
-    def test (pathDirData, pathFileTest, nnArchitecture, pathModel, nnIsTrained, trBatchSize, transResize, transCrop, launchTimeStamp):   
+    def test (pathDirData, pathFileTest, pathModel, nnIsTrained, trBatchSize, transResize, transCrop, launchTimeStamp):   
         
         nnArchitecture = 'DENSENET-121-FN'
         CLASS_NAMES = ['Normal', 'Pneumonia']
@@ -736,7 +739,7 @@ class ChexnetTrainer_Binary_FN ():
         
         #-------------------- SETTINGS: NETWORK ARCHITECTURE, MODEL LOAD
          
-        model = DenseNet121_Binary(nnClassCount, nnIsTrained)
+        model = DenseNet121_Binary(nnClassCount, nnIsTrained, transfer=True, freeze=False)
         
         modelCheckpoint = torch.load(pathModel)
         model.load_state_dict(modelCheckpoint['state_dict'])

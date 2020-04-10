@@ -111,7 +111,7 @@ class DenseNet121_Binary(nn.Module):
 class DenseNet121_Binary_FN(nn.Module):
   def __init__(self, classCount=1, isTrained=True, transfer=True, freeze=True):
 	
-    super(DenseNet121_Binary, self).__init__()
+    super(DenseNet121_Binary_FN, self).__init__()
 
     self.densenet121 = DenseNet121(classCount=14, isTrained=True)
 

@@ -147,7 +147,7 @@ class DatasetGenerator_Binary_FN (Dataset):
                 lineItems = line.split()
                 
                 imagePath = os.path.join(pathImageDirectory, lineItems[0])
-                imageLabel = int(lineItems[1])
+                imageLabel = [int(lineItems[1])]
                 
                 self.listImagePaths.append(imagePath)
                 self.listImageLabels.append(imageLabel)   
@@ -161,7 +161,7 @@ class DatasetGenerator_Binary_FN (Dataset):
         imagePath = self.listImagePaths[index]
         
         imageData = Image.open(imagePath).convert('RGB')
-        imageLabel= torch.LongTensor(self.listImageLabels[index])
+        imageLabel= torch.FloatTensor(self.listImageLabels[index])
         
         if self.transform != None: imageData = self.transform(imageData)
         
