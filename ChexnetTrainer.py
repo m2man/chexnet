@@ -15,11 +15,58 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as func
 from collections import OrderedDict
 from sklearn.metrics.ranking import roc_auc_score
-
+import json
 from DensenetModels import DenseNet121, DenseNet121_Binary, ResNet50, DenseNet121_Binary_FN
 from DensenetModels import DenseNet169
 from DensenetModels import DenseNet201
 from DatasetGenerator import DatasetGenerator, DatasetGenerator_Binary, DatasetGenerator_Binary_ResNet, DatasetGenerator_Binary_FN
+
+
+def calculate_metric(gtnp, pdnp):
+    # input are numpy vector
+    total_samples = len(gtnp)
+    #print(f"Total sample: {total_samples}")
+    total_correct = np.sum(gtnp == pdnp)
+    accuracy = total_correct / total_samples
+    gt_pos = np.where(gtnp == 1)[0]
+    gt_neg = np.where(gtnp == 0)[0]
+    TP = np.sum(pdnp[gt_pos])
+    TN = np.sum(1 - pdnp[gt_neg])
+    FP = np.sum(pdnp[gt_neg])
+    FN = np.sum(1 - pdnp[gt_pos])
+    precision = TP / (TP+FP)
+    recall = TP/(TP+FN)
+    f1 = 2*precision*recall/(precision+recall)
+    metrics = {}
+    metrics['accuracy'] = str(accuracy)
+    metrics['precision'] = str(precision)
+    metrics['recall'] = str(recall)
+    metrics['f1'] = str(f1)
+    metrics['tp'] = str(int(TP))
+    metrics['tn'] = str(int(TN))
+    metrics['fp'] = str(int(FP))
+    metrics['fn'] = str(int(FN))
+
+    return metrics
+
+def calculate_metric_multiple_diseases(gtnp, pdnp, classname):
+    # input are numpy vector
+    metrics = {}
+    total_samples = gtnp.shape[0]
+    pdnp[pdnp > 0.5] = 1
+    pdnp[pdnp <= 0.5] = 0
+    pred_disease_or_not = np.sum(pdnp, axis = 1)
+    gt_disease_or_not = np.sum(gtnp, axis = 1)
+    pred_disease_or_not[pred_disease_or_not >= 1] = 1
+    gt_disease_or_not[gt_disease_or_not >= 1] = 1
+    metrics['binary'] = calculate_metric(gt_disease_or_not, pred_disease_or_not)
+
+    for idx, disease_name in enumerate(classname):
+        gt_disease = np.squeeze(gtnp[:,idx])
+        pd_disease = np.squeeze(pdnp[:,idx])
+        metrics[disease_name] = calculate_metric(gt_disease, pd_disease)
+    
+    return metrics
 
 
 #-------------------------------------------------------------------------------- 
@@ -254,29 +301,39 @@ class ChexnetTrainer ():
         model.eval()
         
         with torch.no_grad():
-          for i, (input, target) in enumerate(dataLoaderTest):
-              
-              target = target.cuda()
-              outGT = torch.cat((outGT, target), 0)
-              
-              bs, n_crops, c, h, w = input.size()
-              
-              varInput = torch.autograd.Variable(input.view(-1, c, h, w).cuda())
-              
-              out = model(varInput)
-              outMean = out.view(bs, n_crops, -1).mean(1)
-              
-              outPRED = torch.cat((outPRED, outMean.data), 0)
+            for i, (input, target) in enumerate(dataLoaderTest):
+
+                target = target.cuda()
+                outGT = torch.cat((outGT, target), 0)
+                
+                bs, n_crops, c, h, w = input.size()
+                
+                varInput = torch.autograd.Variable(input.view(-1, c, h, w).cuda())
+                
+                out = model(varInput)
+                outMean = out.view(bs, n_crops, -1).mean(1)
+                
+                outPRED = torch.cat((outPRED, outMean.data), 0)
+
+        outGTnp = outGT.cpu().numpy()
+        outPREDnp = outPRED.cpu().numpy()
 
         aurocIndividual = ChexnetTrainer_Binary.computeAUROC(outGT, outPRED, nnClassCount)
         aurocMean = np.array(aurocIndividual).mean()
+        
+        metrics = calculate_metric_multiple_diseases(outGTnp, outPREDnp, CLASS_NAMES)
+        print("===== METRICS =====")
+        print(metrics)
+        
+        with open('report/chexnet-dense121-14-metrics-tencrops.json', 'w') as f:
+            json.dump(metrics, f)
         
         print ('AUROC mean ', aurocMean)
         
         for i in range (0, len(aurocIndividual)):
             print (CLASS_NAMES[i], ' ', aurocIndividual[i])
         
-     
+
         return
 #-------------------------------------------------------------------------------- 
 # BINARY
@@ -537,7 +594,6 @@ class ChexnetTrainer_Binary ():
      
         return
 
-
 class ChexnetTrainer_Binary_FN ():
 
     #---- Train the densenet network 
@@ -583,12 +639,13 @@ class ChexnetTrainer_Binary_FN ():
         dataLoaderVal = DataLoader(dataset=datasetVal, batch_size=trBatchSize, shuffle=False, num_workers=24, pin_memory=True)
         
         #-------------------- SETTINGS: OPTIMIZER & SCHEDULER
-        #optimizer = optim.Adam (model.parameters(), lr=0.0002, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
-        optimizer = optim.SGD (model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-5)
-        scheduler = ReduceLROnPlateau(optimizer, factor = 0.1, patience = 2, mode = 'min', verbose=True)
+        optimizer = optim.Adam (model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
+        #optimizer = optim.SGD (model.parameters(), lr=0.005, momentum=0.9, weight_decay=1e-5)
+        scheduler = ReduceLROnPlateau(optimizer, factor = 0.8, patience = 2, mode = 'min', verbose=True)
                 
         #-------------------- SETTINGS: LOSS
-        pos_weight = torch.FloatTensor([2.5]).cuda()
+        #pos_weight = torch.FloatTensor([1.15]).cuda()
+        pos_weight = None
         loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             
         #---- Load checkpoint 
@@ -703,12 +760,12 @@ class ChexnetTrainer_Binary_FN ():
     def computeAUROC (dataGT, dataPRED, classCount):
         
         outAUROC = []
-        
+        '''
         datanpGT = dataGT.cpu().numpy()
         datanpPRED = dataPRED.cpu().numpy()
-        
+        '''
         for i in range(classCount):
-            outAUROC.append(roc_auc_score(datanpGT[:, i], datanpPRED[:, i]))
+            outAUROC.append(roc_auc_score(dataGT[:, i], dataPRED[:, i]))
             
         return outAUROC
         
@@ -729,20 +786,31 @@ class ChexnetTrainer_Binary_FN ():
     #---- launchTimestamp - date/time, used to assign unique name for the checkpoint file
     #---- checkpoint - if not None loads the model and continues training
     
-    def test (pathDirData, pathFileTest, pathModel, nnIsTrained, trBatchSize, transResize, transCrop, launchTimeStamp):   
+    def test (pathDirData, pathFileTest, pathModel, trBatchSize, transResize, transCrop, launchTimeStamp):   
         
         nnArchitecture = 'DENSENET-121-FN'
         CLASS_NAMES = ['Normal', 'Pneumonia']
+        nnIsTrained = False
         nnClassCount = 1
 
         cudnn.benchmark = True
         
         #-------------------- SETTINGS: NETWORK ARCHITECTURE, MODEL LOAD
          
-        model = DenseNet121_Binary(nnClassCount, nnIsTrained, transfer=True, freeze=False)
+        model = DenseNet121_Binary(nnClassCount, nnIsTrained, transfer=False, freeze=False).cuda()
         
         modelCheckpoint = torch.load(pathModel)
-        model.load_state_dict(modelCheckpoint['state_dict'])
+
+        new_state_dict = OrderedDict()
+        ##### Convert Parrallel to Single GPU Loading Model #####
+        for k, v in modelCheckpoint['state_dict'].items():
+            if 'classifier' in k:
+                name = k.replace('classifier', 'classifier.0')
+                new_state_dict[name] = v
+            else:
+                new_state_dict[k] = v
+
+        model.load_state_dict(new_state_dict)
 
         #-------------------- SETTINGS: DATA TRANSFORMS, TEN CROPS
         normalize = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -758,14 +826,13 @@ class ChexnetTrainer_Binary_FN ():
         datasetTest = DatasetGenerator_Binary_FN(pathImageDirectory=pathDirData, pathDatasetFile=pathFileTest, transform=transformSequence)
         dataLoaderTest = DataLoader(dataset=datasetTest, batch_size=trBatchSize, num_workers=8, shuffle=False, pin_memory=True)
         
-        outGT = torch.LongTensor().cuda()
-        outPRED = torch.LongTensor().cuda()
+        outGT = torch.FloatTensor().cuda()
+        outPRED = torch.FloatTensor().cuda()
        
         model.eval()
         
         with torch.no_grad():
           for i, (input, target) in enumerate(dataLoaderTest):
-              
               target = target.cuda()
               outGT = torch.cat((outGT, target), 0)
               
@@ -778,9 +845,23 @@ class ChexnetTrainer_Binary_FN ():
               
               outPRED = torch.cat((outPRED, outMean.data), 0)
 
-        aurocIndividual = ChexnetTrainer_Binary_FN.computeAUROC(outGT, outPRED, nnClassCount)
+        outGTnp = outGT.cpu().numpy()
+        outPREDnp = outPRED.cpu().numpy()
+        aurocIndividual = ChexnetTrainer_Binary_FN.computeAUROC(outGTnp, outPREDnp, nnClassCount)
         aurocMean = np.array(aurocIndividual).mean()
         
+        outGTnp = np.squeeze(outGTnp)
+        outPREDnp = np.squeeze(outPREDnp)
+        outPREDnp[np.where(outPREDnp>0.5)[0]] = 1
+        outPREDnp[np.where(outPREDnp<=0.5)[0]] = 0
+        metrics = calculate_metric(outGTnp, outPREDnp)
+        print("===== METRICS =====")
+        print(metrics)
+        export_name = pathModel.split('/')[-1]
+        export_name = export_name[:-8]
+        with open('report/'+export_name+'-metrics-tencrops.json', 'w') as f:
+            json.dump(metrics, f)
+
         print ('AUROC mean ', aurocMean)
         
         for i in range (0, len(aurocIndividual)):
@@ -788,7 +869,6 @@ class ChexnetTrainer_Binary_FN ():
         
      
         return
-
 
 class ChexnetTrainer_Binary_ResNet ():
 
@@ -806,9 +886,11 @@ class ChexnetTrainer_Binary_ResNet ():
     #---- launchTimestamp - date/time, used to assign unique name for the checkpoint file
     #---- checkpoint - if not None loads the model and continues training
     
-    def train (pathDirData, pathFileTrain, pathFileVal, nnIsTrained, nnClassCount, trBatchSize, trMaxEpoch, transResize, transCrop, launchTimestamp, checkpoint):
+    def train (pathDirData, pathFileTrain, pathFileVal, nnIsTrained, trBatchSize, trMaxEpoch, transResize, transCrop, launchTimestamp, checkpoint):
 
         nnArchitecture = 'RESNET-50'
+        nnClassCount = 1
+
         model = ResNet50(nnClassCount, nnIsTrained, freeze=False).cuda()
 
         #-------------------- SETTINGS: NETWORK ARCHITECTURE
@@ -833,12 +915,13 @@ class ChexnetTrainer_Binary_ResNet ():
         dataLoaderVal = DataLoader(dataset=datasetVal, batch_size=trBatchSize, shuffle=False, num_workers=24, pin_memory=True)
         
         #-------------------- SETTINGS: OPTIMIZER & SCHEDULER
-        #optimizer = optim.Adam (model.parameters(), lr=0.0002, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
-        optimizer = optim.SGD(model.parameters(), lr = 0.008, momentum=0.9, weight_decay=1e-5)
+        optimizer = optim.Adam (model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
+        #optimizer = optim.SGD(model.parameters(), lr = 0.008, momentum=0.9, weight_decay=1e-5)
         scheduler = ReduceLROnPlateau(optimizer, factor = 0.8, patience = 1, mode = 'min', verbose=True)
                 
         #-------------------- SETTINGS: LOSS
-        loss = nn.CrossEntropyLoss()
+        pos_weight = torch.FloatTensor([1.15]).cuda()
+        loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             
         #---- Load checkpoint 
         if checkpoint != None:
@@ -890,7 +973,7 @@ class ChexnetTrainer_Binary_ResNet ():
 
         for batchID, (input, target) in enumerate (dataLoader): 
             target = target.cuda()
-            target = torch.squeeze(target, 1)
+            #target = torch.squeeze(target, 1)
 
             varInput = torch.autograd.Variable(input).cuda()
             #print(varInput.is_cuda)
@@ -924,7 +1007,7 @@ class ChexnetTrainer_Binary_ResNet ():
             for i, (input, target) in enumerate (dataLoader):
                 
                 target = target.cuda()
-                target = torch.squeeze(target, 1)
+                #target = torch.squeeze(target, 1)
 
                 varInput = torch.autograd.Variable(input).cuda()
                 varTarget = torch.autograd.Variable(target)    
@@ -1026,9 +1109,23 @@ class ChexnetTrainer_Binary_ResNet ():
               
               outPRED = torch.cat((outPRED, outMean.data), 0)
 
-        aurocIndividual = ChexnetTrainer_Binary.computeAUROC(outGT, outPRED, nnClassCount)
+        outGTnp = outGT.cpu().numpy()
+        outPREDnp = outPRED.cpu().numpy()
+        aurocIndividual = ChexnetTrainer_Binary_FN.computeAUROC(outGTnp, outPREDnp, nnClassCount)
         aurocMean = np.array(aurocIndividual).mean()
         
+        outGTnp = np.squeeze(outGTnp)
+        outPREDnp = np.squeeze(outPREDnp)
+        outPREDnp[np.where(outPREDnp>0.5)[0]] = 1
+        outPREDnp[np.where(outPREDnp<=0.5)[0]] = 0
+        metrics = calculate_metric(outGTnp, outPREDnp)
+        print("===== METRICS =====")
+        print(metrics)
+        export_name = pathModel.split('/')[-1]
+        export_name = export_name[:-8]
+        with open('report/'+export_name+'-metrics-tencrops.json', 'w') as f:
+            json.dump(metrics, f)
+
         print ('AUROC mean ', aurocMean)
         
         for i in range (0, len(aurocIndividual)):

@@ -157,16 +157,18 @@ class DenseNet121_Binary_FN(nn.Module):
 
 
 class ResNet50(nn.Module):
-    def __init__ (self, classCount=2, isTrained=True, freeze=True):
+    def __init__ (self, classCount=1, isTrained=True, freeze=True):
         
+        classCount = 1
         super(ResNet50, self).__init__()
         
         self.resnet50 = torchvision.models.resnet50(pretrained=isTrained)
         
         self.resnet50.fc = nn.Sequential(
-               nn.Linear(2048, 128),
-               nn.ReLU(inplace=True),
-               nn.Linear(128, 2))
+                            nn.Linear(2048, 512),
+                            nn.ReLU(),
+                            nn.Linear(512, classCount)
+        )
         
         if freeze:
             for parameter in self.resnet50.parameters():

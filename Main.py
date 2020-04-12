@@ -111,20 +111,20 @@ def runTrain_Binary():
 def runTest():
     
     pathDirData = '/home/dxtien/dxtien_research/COVID/CXR8'
-    pathFileTest = './dataset/test_1.txt'
-    nnArchitecture = 'DENSENET-121'
+    pathFileTest = './dataset/binary_test_14.txt'
+    nnArchitecture = 'DENSE-NET-121'
     nnIsTrained = True
-    nnClassCount = 2
-    trBatchSize = 2
+    nnClassCount = 14
+    trBatchSize = 4
     imgtransResize = 256
     imgtransCrop = 224
     
-    #pathModel = './models/m-25012018-123527.pth.tar'
-    pathModel = './DENSENET-121-10042020-184520.pth.tar'
+    pathModel = './models/m-25012018-123527.pth.tar'
+    #pathModel = './DENSENET-121-10042020-184520.pth.tar'
 
     timestampLaunch = ''
     
-    ChexnetTrainer_Binary.test(pathDirData, pathFileTest, nnArchitecture, pathModel, nnClassCount, nnIsTrained, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)
+    ChexnetTrainer.test(pathDirData, pathFileTest, pathModel, nnArchitecture, nnClassCount, nnIsTrained, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)
 
 #-------------------------------------------------------------------------------- 
 

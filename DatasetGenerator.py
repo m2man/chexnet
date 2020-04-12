@@ -220,7 +220,7 @@ class DatasetGenerator_Binary_ResNet (Dataset):
         imagePath = self.listImagePaths[index]
         
         imageData = Image.open(imagePath).convert('RGB')
-        imageLabel= torch.LongTensor(self.listImageLabels[index])
+        imageLabel= torch.FloatTensor(self.listImageLabels[index])
         
         if self.transform != None: imageData = self.transform(imageData)
         
